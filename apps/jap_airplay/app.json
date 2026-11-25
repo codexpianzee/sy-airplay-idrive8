@@ -1,0 +1,43 @@
+{
+  "id": "jap_airplay",
+  "title": "AirPlay",
+  "description": "Your iPhone's screen on the central display by AirPlay screen mirroring, parked only. Needs the jap-airplay-d tool.",
+  "id8": {
+    "id": "jap_airplay8",
+    "loggingId": "APL8",
+    "description": "Your iPhone's screen on the iDrive 8 display by AirPlay screen mirroring, parked only: disconnect CarPlay, join the car's Wi-Fi, then Screen Mirroring and the car's name. The sound stays on Bluetooth. Needs the jap-airplay-d tool and the GPU renderer (mgu-render)."
+  },
+  "version": "0.1.0",
+  "license": "GPL-3.0-or-later",
+  "vendor": "custom",
+  "loggingId": "OAA7",
+  "iconGlyph": "airplay",
+  "signals": {
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "statusCarSpeed2": "rs"
+    }
+  },
+  "screens": [
+    {
+      "name": "VIEW",
+      "kind": "canvas",
+      "title": "AirPlay",
+      "hmi": false,
+      "bg": "#0b0d12"
+    }
+  ],
+  "settings": [
+    {
+      "key": "parkedOnly",
+      "label": "Parked only (hides the picture while driving)",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "autoShow",
+      "label": "Show the phone's screen when it connects",
+      "type": "bool",
+      "default": true
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+build/
+dist/
+oap-sdk
+__pycache__/
+.DS_Store
+native/*/build/
+native/*/dist/

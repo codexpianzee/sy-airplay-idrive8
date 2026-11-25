@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Unit]
+Description=jap-airplay-d: AirPlay screen mirroring for iDrive 8 (runs airplay-rx while the AirPlay app is open)
+RequiresMountsFor=/var/opt
+After=local-fs.target network.target
+
+[Service]
+# root: the firewall rules (nft) and airplay-rx's mDNS adverts through the head unit's mdnsd
+User=root
+ExecStartPre=-/bin/sh -c 'mkdir -p /var/opt/jap-airplay-d/state /var/opt/jap-airplay-d/log && chmod 0700 /var/opt/jap-airplay-d/state'
+ExecStart=/bin/sh -c 'exec /usr/bin/node /var/opt/jap-airplay-d/current/airplayd.js >> /var/opt/jap-airplay-d/log/airplayd.log 2>&1'
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=6
+# never in the way of the HMI: airplay-rx decodes in software (about 2 % of a core on iDrive 7)
+Nice=10
+CPUQuota=100%
+LimitCORE=1
+
+[Install]
+WantedBy=multi-user.target
