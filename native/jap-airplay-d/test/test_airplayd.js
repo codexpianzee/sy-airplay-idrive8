@@ -63,7 +63,7 @@ function daemon() {
         stdio: ['ignore', 'pipe', 'inherit'],
         env: Object.assign({}, process.env, {
             AP8_BIN: p('airplay-rx'), AP8_STATE: p('state'), AP8_LOGDIR: p('log'), AP8_WANT: p('want'), AP8_STATUS: p('status.json'),
-            AP8_VIDEO: p('video'), AP8_NFT: p('nft'), AP8_SYSNET: p('net'), AP8_LIBDIRS: p('usrlib'), AP8_SHIM: p('shim'), AP8_TICK_MS: '100', AP8_WANT_MS: '600', AP8_RETRY_MS: '1500',
+            AP8_VIDEO: p('video'), AP8_RX_STATUS: p('rx.json'), AP8_NFT: p('nft'), AP8_SYSNET: p('net'), AP8_LIBDIRS: p('usrlib'), AP8_SHIM: p('shim'), AP8_TICK_MS: '100', AP8_WANT_MS: '600', AP8_RETRY_MS: '1500',
         }),
     });
 }
@@ -91,8 +91,17 @@ async function main() {
     assert.ok(/open \(ip, 6 rules\)/.test(status().firewall), status().firewall);
     console.log('ok   app open: airplay-rx started (' + args.replace(dir, '<dir>').replace(dir, '<dir>') + '), firewall ' + status().firewall);
 
-    // the app closes
+    // the app's screen goes while the iPhone mirrors: the receiver stays on (closing it would end the mirroring)
     clearInterval(keep);
+    const rxKeep = setInterval(() => fs.writeFileSync(p('rx.json'), JSON.stringify({ on: true, mirroring: true })), 150);
+    await sleep(1500);
+    assert.strictEqual(status().state, 'running', 'still running while mirroring');
+    assert.ok(lines('rx.log').indexOf('sigterm') < 0, 'no SIGTERM while mirroring');
+    clearInterval(rxKeep);
+    fs.writeFileSync(p('rx.json'), JSON.stringify({ on: true, mirroring: false }));
+    console.log('ok   app screen gone while mirroring: the receiver stays on');
+
+    // mirroring over, the app closed
     await until(() => status().state === 'idle' && lines('rx.log').indexOf('sigterm') >= 0, 4000, 'stopped');
     assert.strictEqual(rules().length, 0, 'the rules are gone');
     console.log('ok   app closed: SIGTERM, rules removed');

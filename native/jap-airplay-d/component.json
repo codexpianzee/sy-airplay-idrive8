@@ -1,7 +1,7 @@
 {
   "id": "jap-airplay-d",
   "kind": "tool",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "GPL-3.0-or-later",
   "title": "AirPlay service (iDrive 8)",
   "description": "AirPlay screen mirroring from an iPhone to the iDrive 8 display: runs h4m4d's AirPlay receiver (airplay-rx, UxPlay's AirPlay library) only while the AirPlay app is open, and opens the car Wi-Fi's firewall for it meanwhile. Video only: the sound stays on Bluetooth to the car.",

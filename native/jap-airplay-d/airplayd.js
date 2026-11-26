@@ -37,6 +37,7 @@ const LOGDIR = env.AP8_LOGDIR || path.join(BASE, 'log');
 const WANT = env.AP8_WANT || '/dev/shm/mgu-airplay8-want';
 const STATUS = env.AP8_STATUS || '/dev/shm/mgu-airplay8-d.json';
 const VIDEO = env.AP8_VIDEO || '/dev/shm/mgu-video-airplay';
+const RX_STATUS = env.AP8_RX_STATUS || '/dev/shm/mgu-airplay-status.json';
 const NFT = env.AP8_NFT || 'nft';
 const SYSNET = env.AP8_SYSNET || '/sys/class/net';
 const TICK_MS = Number(env.AP8_TICK_MS || 1000);
@@ -223,6 +224,14 @@ function stop(why) {
 function fresh() {
     try { return Date.now() - fs.statSync(WANT).mtime.getTime() < WANT_MS; } catch (e) { return false; }
 }
+// an iPhone mirroring right now (airplay-rx's own status, written while it runs): the receiver stays on even when the
+// app's screen is not up (another iDrive screen opened over it): stopping it would end the iPhone's mirroring
+function mirroring() {
+    try {
+        if (Date.now() - fs.statSync(RX_STATUS).mtime.getTime() > WANT_MS) return false;
+        return JSON.parse(fs.readFileSync(RX_STATUS, 'utf8')).mirroring === true;
+    } catch (e) { return false; }
+}
 
 function writeStatus(want) {
     const s = {
@@ -235,7 +244,7 @@ function writeStatus(want) {
 }
 
 function tick() {
-    const want = fresh();
+    const want = fresh() || (!!child && !stopping && mirroring());
     if (want && !child && !stopping) {
         if (Date.now() >= holdUntil) {
             if (state === 'restarting' || state === 'failed') restarts++;
