@@ -45,6 +45,8 @@ const QUICK_MS = 4000;              // an exit sooner than this after the start 
 const RETRY_MS = Number(env.AP8_RETRY_MS || 15000);  // after two failed starts in a row: wait this long
 const LOG_MAX = 1 << 20;
 const COMMENT = 'jap-airplay8';
+const LIBDIRS = (env.AP8_LIBDIRS || '/usr/lib:/lib').split(':');
+const SHIM = env.AP8_SHIM || path.join(BASE, 'lib');
 const TCP = [7100, 7101], UDP = [6100, 6101, 7111];   // airplay-rx's ports (CarPlay holds 7000)
 
 function log(msg) { process.stdout.write(new Date().toISOString() + ' ' + msg + '\n'); }
@@ -64,6 +66,36 @@ function ifaces(cfg) {
     const out = names.filter((n) => WIFI.test(n) && /^[\w.-]{1,15}$/.test(n));
     if (out.indexOf('wlan_bridge') < 0) out.push('wlan_bridge');
     return out.sort();
+}
+
+/* ---------- libdns_sd ---------- */
+// airplay-rx links libdns_sd.so.765 (iDrive 7's mDNSResponder); iDrive 8 has a newer one (libdns_sd.so.1096). The
+// client API it uses (DNSServiceRegister, TXTRecord*: unversioned symbols) is the same in both, so a link named .765
+// to the car's own library, in a folder of our own put first in LD_LIBRARY_PATH, is all it takes. Nothing in /usr/lib
+// is touched. Returns the folder, or null when the car has a .765 itself (or no libdns_sd at all: the loader says so).
+const WANT_DNSSD = 'libdns_sd.so.765';
+function dnssdShim(dir) {
+    const has = (d, n) => { try { fs.statSync(path.join(d, n)); return true; } catch (e) { return false; } };
+    if (LIBDIRS.some((d) => has(d, WANT_DNSSD))) return null;
+    let best = null;
+    LIBDIRS.forEach((d) => {
+        let names = [];
+        try { names = fs.readdirSync(d); } catch (e) { names = []; }
+        names.forEach((n) => {
+            const m = /^libdns_sd\.so\.(\d+)$/.exec(n);
+            if (m && (!best || Number(m[1]) > best.v)) best = { v: Number(m[1]), p: path.join(d, n) };
+        });
+    });
+    if (!best) return null;
+    try { fs.mkdirSync(dir); } catch (e) { /* there */ }
+    const link = path.join(dir, WANT_DNSSD);
+    let cur = null;
+    try { cur = fs.readlinkSync(link); } catch (e) { cur = null; }
+    if (cur !== best.p) {
+        try { fs.unlinkSync(link); } catch (e) { /* none */ }
+        fs.symlinkSync(best.p, link);
+    }
+    return dir;
 }
 
 /* ---------- the firewall ---------- */
@@ -133,8 +165,15 @@ function start(cfg) {
     const out = logFd();
     log('start ' + BIN + ' ' + args.join(' ') + ' | firewall ' + (fw.off ? 'off (config)' : (fw.ok ? 'open' : 'NOT open: ' + fw.why)) + ' for ' + list.join(','));
     tail = '';
+    const cenv = Object.assign({}, process.env);
+    let shim = null;
+    try { shim = dnssdShim(SHIM); } catch (e) { log('libdns_sd link: ' + e.message); }
+    if (shim) {
+        cenv.LD_LIBRARY_PATH = shim + (cenv.LD_LIBRARY_PATH ? ':' + cenv.LD_LIBRARY_PATH : '');
+        log('libdns_sd: ' + WANT_DNSSD + ' -> ' + fs.readlinkSync(path.join(shim, WANT_DNSSD)));
+    }
     try {
-        child = cp.spawn(BIN, args, { stdio: ['ignore', out, 'pipe'] });
+        child = cp.spawn(BIN, args, { stdio: ['ignore', out, 'pipe'], env: cenv });
     } catch (e) {
         child = null; lastErr = 'cannot start ' + BIN + ': ' + e.message; state = 'failed'; failed();
         if (typeof out === 'number') fs.closeSync(out);
@@ -228,4 +267,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { ifaces, fresh, WIFI };
+module.exports = { ifaces, fresh, WIFI, dnssdShim };

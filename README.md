@@ -22,12 +22,16 @@ geleceği yer.
 ## Durum
 
 **Henüz arabada denenmedi.** Uygulama ve servis, iDrive 8 test ortamında ve MGU Store'un kendi bağlayıcısıyla test
-edildi. `airplay-rx` iDrive 7'de çalışıyor. iDrive 8'de belirsiz olanlar:
+edildi. `airplay-rx` iDrive 7'de çalışıyor. Bir iDrive 8'den (MGU 23w50.3, glibc 2.27) alınan kontrol sonuçları:
 
-- `airplay-rx`'in bağlandığı kütüphaneler: `libcrypto.so.1.1`, `libdns_sd.so.765`, `libva.so.1`, `libva-drm.so.1`.
-  Kurulumdaki kontrol (`check.sh`) eksik olanı adıyla söyler.
-- mdnsd (`/run/mdnsd/mdnsd_uds`): iPhone'un arabayı listede görmesi için gerekli.
-- Arabanın Wi-Fi arayüzünün adı ve güvenlik duvarı (aşağıda, *Ayarlar*).
+- Arabanın Wi-Fi arayüzü iDrive 7'deki gibi `wlan_bridge`. iPhone hotspot'u ise `wlan0`. Güvenlik duvarı `table ip filter`, CarPlay 7000'de.
+- mdnsd `/run/mdnsd/mdnsd_uds` yolunda. Bluetooth adı (`BMW xxxxx`) bulunuyor.
+- `libcrypto.so.1.1`, `libva.so.1`, `libva-drm.so.1` arabada var. **`libdns_sd` farklı:** iDrive 8'de
+  `libdns_sd.so.1096` var, `airplay-rx` ise `.765` istiyor. Kullandığı API iki sürümde de aynı olduğu için servis kendi
+  klasöründe (`/var/opt/jap-airplay-d/lib`) `.765` adlı bir bağlantı oluşturur ve `airplay-rx`'i `LD_LIBRARY_PATH` ile
+  başlatır. `/usr/lib`'e dokunulmaz.
+- Kurulumdaki kontrol (`check.sh`) bütün kütüphaneleri bu bağlantıyla birlikte dener. Eksik bir şey varsa adını
+  söyleyerek kurulumu durdurur.
 
 ## Kurulum
 

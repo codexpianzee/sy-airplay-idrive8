@@ -26,6 +26,7 @@ const lines = (f) => { try { return fs.readFileSync(p(f), 'utf8').split('\n').fi
 fs.writeFileSync(p('airplay-rx'), `#!/usr/bin/env node
 const fs = require('fs');
 fs.appendFileSync(${JSON.stringify(p('rx.log'))}, 'start ' + process.argv.slice(2).join(' ') + '\\n');
+fs.writeFileSync(${JSON.stringify(p('rx.env'))}, process.env.LD_LIBRARY_PATH || '');
 if (fs.existsSync(${JSON.stringify(p('FAIL'))})) { process.stderr.write('airplay-rx: error while loading shared libraries: libdns_sd.so.765: cannot open shared object file: No such file or directory\\n'); process.exit(127); }
 process.on('SIGTERM', () => { fs.appendFileSync(${JSON.stringify(p('rx.log'))}, 'sigterm\\n'); process.exit(0); });
 setInterval(() => {}, 1000);
@@ -50,6 +51,9 @@ fs.writeFileSync(db, JSON.stringify(r));
 fs.mkdirSync(p('net'));
 ['lo', 'eth0', 'wlan0', 'usb0'].forEach((n) => fs.mkdirSync(p('net/' + n)));
 fs.mkdirSync(p('state'));
+// the car's libraries: iDrive 8's mDNSResponder (libdns_sd.so.1096; airplay-rx asks for .765)
+fs.mkdirSync(p('usrlib'));
+['libdns_sd.so.1096.40.7', 'libdns_sd.so.1096', 'libdns_sd.so.4', 'libdns_sd.so'].forEach((n) => fs.writeFileSync(p('usrlib/' + n), ''));
 
 const want = () => { fs.writeFileSync(p('want'), String(Date.now())); };
 const rules = () => { try { return JSON.parse(fs.readFileSync(p('nft.json'), 'utf8')); } catch (e) { return []; } };
@@ -59,7 +63,7 @@ function daemon() {
         stdio: ['ignore', 'pipe', 'inherit'],
         env: Object.assign({}, process.env, {
             AP8_BIN: p('airplay-rx'), AP8_STATE: p('state'), AP8_LOGDIR: p('log'), AP8_WANT: p('want'), AP8_STATUS: p('status.json'),
-            AP8_VIDEO: p('video'), AP8_NFT: p('nft'), AP8_SYSNET: p('net'), AP8_TICK_MS: '100', AP8_WANT_MS: '600', AP8_RETRY_MS: '1500',
+            AP8_VIDEO: p('video'), AP8_NFT: p('nft'), AP8_SYSNET: p('net'), AP8_LIBDIRS: p('usrlib'), AP8_SHIM: p('shim'), AP8_TICK_MS: '100', AP8_WANT_MS: '600', AP8_RETRY_MS: '1500',
         }),
     });
 }
@@ -76,6 +80,9 @@ async function main() {
     await until(() => status().state === 'running' && lines('rx.log').length > 0, 3000, 'running');
     const args = lines('rx.log')[0];
     assert.strictEqual(args, 'start -A -s -n auto -k ' + p('state/airplay.pem') + ' -o ' + p('video'), 'its arguments: ' + args);
+    assert.strictEqual(fs.readFileSync(p('rx.env'), 'utf8'), p('shim'), 'LD_LIBRARY_PATH: the link folder first');
+    assert.strictEqual(fs.readlinkSync(p('shim/libdns_sd.so.765')), p('usrlib/libdns_sd.so.1096'), 'libdns_sd.so.765 -> the car\'s .1096');
+    console.log('ok   libdns_sd: .765 linked to the car\'s .1096, LD_LIBRARY_PATH set');
     const ifs = status().ifaces;
     assert.deepStrictEqual(ifs, ['wlan0', 'wlan_bridge'], 'Wi-Fi interfaces found: ' + ifs);
     assert.strictEqual(rules().length, 6, 'three rules each');
