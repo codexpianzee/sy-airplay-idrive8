@@ -1,4 +1,4 @@
-# AirPlay for iDrive 8: builds the MGU Store catalog from main and publishes it as the GitHub release tagged "catalog"
+# SY AirPlay for iDrive 8: builds the MGU Store catalog from main and publishes it as the GitHub release tagged "catalog"
 # of THIS repository (in the Store: Settings > Add source > <your-user>/<your-repo> > Releases).
 name: Release (MGU Store catalog)
 
@@ -8,7 +8,7 @@ on:
     paths:
       - 'apps/**'
       - 'kit/**'
-      - 'native/jap-airplay-d/**'
+      - 'native/sy-airplay-d/**'
       - 'tools/**'
       - '.github/workflows/release.yml'
   workflow_dispatch:
@@ -40,8 +40,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          title="AirPlay for iDrive 8 (MGU Store catalog)"
-          notes="The MGU Store reads catalog.json here. In the Store: Settings, Add source, ${GITHUB_REPOSITORY}, Releases. Then install AirPlay and its service, and restart the head unit."
+          title="SY AirPlay for iDrive 8 (MGU Store catalog)"
+          notes="The MGU Store reads catalog.json here. In the Store: Settings, Add source, ${GITHUB_REPOSITORY}, Releases. Then install SY AirPlay and its service, and restart the head unit."
           if gh release view catalog >/dev/null 2>&1; then
             gh release edit catalog --title "$title" --notes "$notes" --latest
           else

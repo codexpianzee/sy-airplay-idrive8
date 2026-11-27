@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Lays out the MGU Store catalog of this repository in dist/release/: catalog.json, the iDrive 8 app's source package
-(jap_airplay8), the service's tool kit (jap-airplay-d) and the app icon. Upload every file of dist/release/ as an asset
+(sy_airplay8), the service's tool kit (sy-airplay-d) and the app icon. Upload every file of dist/release/ as an asset
 of a GitHub release tagged `catalog`. tools/release_id8.sh does all of it.
 Adapted from MeTube / RideTube's tools/release.py (GPL-3.0-or-later).
 """
 import argparse, gzip, hashlib, io, json, os, shutil, sys, tarfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO = 'trnaslan/airplay-idrive8'
-APP = 'jap_airplay'
+REPO = 'smhcnyldz26-prog/sy-airplay-idrive8'
+APP = 'sy_airplay'
 # one Store entry per head unit, built from the same app (an entry's requirements hold for every car it installs on: the
 # controller gate is iDrive 7's only)
 APPS = (
     # iDrive 8 only: mgu-render 0.6.11 draws the video file (as for MeTube), mgu-deploy 0.7.16+ keeps the tile
-    (APP + '8', ['ID8'], lambda d: {'jap-airplay-d': d, 'mgu-render': '0.6.11', 'mgu-deploy': '0.7.16'}),
+    (APP + '8', ['ID8'], lambda d: {'sy-airplay-d': d, 'mgu-render': '0.6.11', 'mgu-deploy': '0.7.16'}),
 )
-TOOLS = ('jap-airplay-d',)
+TOOLS = ('sy-airplay-d',)
 
 
 def sha256(path):
@@ -106,7 +106,7 @@ def main():
         'id': aid, 'kind': 'app', 'title': app['title'],
         'description': app['description'] if hmi == ['ID7'] else app['id8'].get('description', app['description']),
         'version': app['version'], 'artifact': artifact(os.path.join(out, pkgs[aid]), a.base),
-        'requires': req(tools['jap-airplay-d']['version']),
+        'requires': req(tools['sy-airplay-d']['version']),
         'uninstallable': True, 'mguHmi': hmi, 'icon': icon, 'iconSha256': sha256(os.path.join(out, icon)),
     } for aid, hmi, req in apps]
     for c in comps:
@@ -134,7 +134,7 @@ def main():
         e = {'id': t, 'kind': 'tool', 'title': c['title'], 'description': c['description'], 'version': c['version'],
              'artifact': artifact(os.path.join(out, '%s@%s.tgz' % (t, c['version'])), a.base),
              'requires': c.get('requires', {}), 'uninstallable': bool(c.get('uninstallable')), 'mguHmi': hu}
-        if t != 'jap-airplay-d':
+        if t != 'sy-airplay-d':
             e['optional'] = True       # (installed as a requirement, never offered on its own as an update)
         comps.append(e)
     with open(os.path.join(out, 'catalog.json'), 'w') as f:

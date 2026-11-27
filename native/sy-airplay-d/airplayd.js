@@ -1,17 +1,17 @@
 'use strict';
 /*
- * jap-airplay-d - AirPlay screen mirroring for the BMW iDrive 8 head unit (MGU ID8): the service.
+ * sy-airplay-d - AirPlay screen mirroring for the BMW iDrive 8 head unit (MGU ID8): the service.
  *
  * Runs as root on the head unit's own Node (8: no newer syntax). It keeps h4m4d's AirPlay receiver
  * (airplay-rx, UxPlay's AirPlay library; github.com/noth4m4d/mgu-hamadstools, GPL-3.0-or-later) running only while the
  * AirPlay app is open, and opens the car Wi-Fi's firewall for it meanwhile:
  *
- *   - the app (jap_airplay8) touches WANT (/dev/shm/mgu-airplay8-want) about once a second while its screen is up;
+ *   - the app (sy_airplay8) touches WANT (/dev/shm/mgu-sy-airplay-want) about once a second while its screen is up;
  *   - WANT fresh (under WANT_MS old): airplay-rx is started (always-on mode: no -a, this service decides) and the
- *     firewall rules (comment "jap-airplay8") are put in for the car's Wi-Fi interfaces;
+ *     firewall rules (comment "sy-airplay8") are put in for the car's Wi-Fi interfaces;
  *   - WANT stale: airplay-rx gets SIGTERM (it takes its mDNS adverts down and deletes its video file), the rules go;
- *   - airplay-rx writes the picture to /dev/shm/mgu-video-airplay (mgu-render's MGVF, which the app names to the
- *     renderer) and its own status to /dev/shm/mgu-airplay-status.json; this service writes its own to STATUS.
+ *   - airplay-rx writes the picture to /dev/shm/mgu-video-sy-airplay (mgu-render's MGVF, which the app names to the
+ *     renderer) and its own status to /dev/shm/mgu-sy-airplay-status.json; this service writes its own to STATUS.
  *
  * Why a supervisor and not airplay-rx's -a: the receiver as released is built for iDrive 7. Its -a looks for the app
  * under /var/opt/public/oap/oap_* and its firewall rules name the iDrive 7 interface "wlan_bridge"; neither is known
@@ -30,14 +30,14 @@ const fs = require('fs');
 const path = require('path');
 
 const env = process.env;
-const BASE = env.AP8_BASE || '/var/opt/jap-airplay-d';
+const BASE = env.AP8_BASE || '/var/opt/sy-airplay-d';
 const BIN = env.AP8_BIN || path.join(BASE, 'current', 'airplay-rx');
 const STATE = env.AP8_STATE || path.join(BASE, 'state');
 const LOGDIR = env.AP8_LOGDIR || path.join(BASE, 'log');
-const WANT = env.AP8_WANT || '/dev/shm/mgu-airplay8-want';
-const STATUS = env.AP8_STATUS || '/dev/shm/mgu-airplay8-d.json';
-const VIDEO = env.AP8_VIDEO || '/dev/shm/mgu-video-airplay';
-const RX_STATUS = env.AP8_RX_STATUS || '/dev/shm/mgu-airplay-status.json';
+const WANT = env.AP8_WANT || '/dev/shm/mgu-sy-airplay-want';
+const STATUS = env.AP8_STATUS || '/dev/shm/mgu-sy-airplay-d.json';
+const VIDEO = env.AP8_VIDEO || '/dev/shm/mgu-video-sy-airplay';
+const RX_STATUS = env.AP8_RX_STATUS || '/dev/shm/mgu-sy-airplay-status.json';
 const NFT = env.AP8_NFT || 'nft';
 const SYSNET = env.AP8_SYSNET || '/sys/class/net';
 const TICK_MS = Number(env.AP8_TICK_MS || 1000);
@@ -45,7 +45,7 @@ const WANT_MS = Number(env.AP8_WANT_MS || 5000);
 const QUICK_MS = 4000;              // an exit sooner than this after the start is a failed start
 const RETRY_MS = Number(env.AP8_RETRY_MS || 15000);  // after two failed starts in a row: wait this long
 const LOG_MAX = 1 << 20;
-const COMMENT = 'jap-airplay8';
+const COMMENT = 'sy-airplay8';
 const LIBDIRS = (env.AP8_LIBDIRS || '/usr/lib:/lib').split(':');
 const SHIM = env.AP8_SHIM || path.join(BASE, 'lib');
 const TCP = [7100, 7101], UDP = [6100, 6101, 7111];   // airplay-rx's ports (CarPlay holds 7000)
@@ -261,7 +261,7 @@ function tick() {
 }
 
 function main() {
-    log('jap-airplay-d up: ' + BIN + (fs.existsSync(BIN) ? '' : ' (MISSING)'));
+    log('sy-airplay-d up: ' + BIN + (fs.existsSync(BIN) ? '' : ' (MISSING)'));
     try { fwClose(); } catch (e) { /* no nft */ }   // rules a crash left behind
     const t = setInterval(tick, TICK_MS);
     tick();

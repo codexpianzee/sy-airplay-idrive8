@@ -1,0 +1,43 @@
+{
+  "id": "sy_airplay",
+  "title": "SY AirPlay",
+  "description": "SY AirPlay - your iPhone's screen on the central display by AirPlay screen mirroring, in this experimental build also while driving. Needs the sy-airplay-d tool.",
+  "id8": {
+    "id": "sy_airplay8",
+    "loggingId": "SYA8",
+    "description": "SY AirPlay - your iPhone's screen on the iDrive 8 display by AirPlay screen mirroring, in this experimental build also while driving: disconnect CarPlay, join the car's Wi-Fi, then Screen Mirroring and the car's name. The sound stays on Bluetooth. Needs the sy-airplay-d tool and the GPU renderer (mgu-render)."
+  },
+  "version": "0.2.0",
+  "license": "GPL-3.0-or-later",
+  "vendor": "custom",
+  "loggingId": "SYA7",
+  "iconGlyph": "airplay",
+  "signals": {
+    "de.bmw.infotainment.vehicle.Vehicle2": {
+      "statusCarSpeed2": "rs"
+    }
+  },
+  "screens": [
+    {
+      "name": "VIEW",
+      "kind": "canvas",
+      "title": "SY AirPlay",
+      "hmi": false,
+      "bg": "#16191e"
+    }
+  ],
+  "settings": [
+    {
+      "key": "parkedOnly",
+      "label": "Parked only (hides the picture while driving)",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "key": "autoShow",
+      "label": "Show the phone's screen when it connects",
+      "type": "bool",
+      "default": true
+    }
+  ]
+}

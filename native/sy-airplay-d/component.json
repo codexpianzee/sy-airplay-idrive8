@@ -1,0 +1,30 @@
+{
+  "id": "sy-airplay-d",
+  "kind": "tool",
+  "version": "0.2.0",
+  "license": "GPL-3.0-or-later",
+  "title": "SY AirPlay service (iDrive 8)",
+  "description": "SY AirPlay's service: AirPlay screen mirroring from an iPhone to the iDrive 8 display. Runs h4m4d's AirPlay receiver (airplay-rx, UxPlay's AirPlay library) only while the SY AirPlay app is open, and opens the car Wi-Fi's firewall for it meanwhile. Video only: the sound stays on Bluetooth to the car.",
+  "author": "smhcnyldz26-prog",
+  "requires": {
+    "mgu-deploy": "0.7.0"
+  },
+  "uninstallable": true,
+  "mguHmi": ["ID8"],
+  "files": [
+    { "path": "airplayd.js", "from": "airplayd.js", "mode": "0644" },
+    { "path": "airplay-rx", "from": "build/airplay-rx", "mode": "0755" },
+    { "path": "check.sh", "from": "check.sh", "mode": "0755" },
+    { "path": "LICENSE", "from": "../../LICENSE", "mode": "0644" },
+    { "path": "NOTICE.md", "from": "../../NOTICE.md", "mode": "0644" }
+  ],
+  "check": ["check.sh"],
+  "units": [
+    { "name": "sy-airplay-d.service", "from": "systemd/sy-airplay-d.service" }
+  ],
+  "enable": [
+    { "unit": "sy-airplay-d.service", "target": "multi-user.target" }
+  ],
+  "crashNames": ["airplay-rx"],
+  "restart": ["sy-airplay-d.service"]
+}

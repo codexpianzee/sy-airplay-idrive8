@@ -1,5 +1,5 @@
 'use strict';
-// jap-airplay-d against a fake airplay-rx and a fake nft:
+// sy-airplay-d against a fake airplay-rx and a fake nft:
 //   - the app's file fresh: airplay-rx starts (video only, software decoding, the state dir's key, the video file),
 //     and the firewall gets its rules for the car's Wi-Fi interfaces (found in /sys/class/net, or config.json's);
 //   - the file stale: airplay-rx gets SIGTERM, the rules go;
@@ -86,7 +86,7 @@ async function main() {
     const ifs = status().ifaces;
     assert.deepStrictEqual(ifs, ['wlan0', 'wlan_bridge'], 'Wi-Fi interfaces found: ' + ifs);
     assert.strictEqual(rules().length, 6, 'three rules each');
-    assert.ok(rules().every((r) => /comment "jap-airplay8"/.test(r.text)), 'every rule carries the comment');
+    assert.ok(rules().every((r) => /comment "sy-airplay8"/.test(r.text)), 'every rule carries the comment');
     assert.ok(rules().some((r) => r.chain === 'input' && /iifname "wlan0" tcp dport \{ 7100, 7101 \} accept/.test(r.text)), 'TCP 7100/7101 in on wlan0');
     assert.ok(/open \(ip, 6 rules\)/.test(status().firewall), status().firewall);
     console.log('ok   app open: airplay-rx started (' + args.replace(dir, '<dir>').replace(dir, '<dir>') + '), firewall ' + status().firewall);

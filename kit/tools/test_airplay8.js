@@ -1,9 +1,10 @@
 'use strict';
-// AirPlay on iDrive 8 (dist/jap_airplay8, python3 kit/tools/build.py --hmi ID8 jap_airplay): the built app through the
+// AirPlay on iDrive 8 (dist/sy_airplay8, python3 kit/tools/build.py --hmi ID8 sy_airplay): the built app through the
 // stubbed head unit on a 2880 x 960 renderer that routes touch, against the status files of a fake service and a fake
 // airplay-rx. Checks: the app keeps the receiver on (the want file) only while its screen is up; the steps page and
 // its state line (no service, failed, ready); mirroring opens the picture over the whole app area (video op 19, the
-// file named to the renderer); a tap shows the bar, Back goes to the steps; driving hides the picture; Settings.
+// file named to the renderer); a tap shows the bar, Back goes to the steps; driving keeps the picture up
+// (experimental fork), the "Parked only" setting hides it while moving; Settings.
 // With SHOTS=<folder> each step is also written there as a PNG of the whole screen (kit/tools/surface.js).
 //   node kit/tools/test_airplay8.js
 const assert = require('assert');
@@ -12,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
-const stage = path.join(ROOT, 'dist', 'jap_airplay8');
+const stage = path.join(ROOT, 'dist', 'sy_airplay8');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, ms, what) {
     const end = Date.now() + (ms || 3000);
@@ -22,7 +23,7 @@ const quiet = { info() {}, warn() {}, error(m, e) { throw e || new Error(m); }, 
 
 async function main() {
     if (!fs.existsSync(path.join(stage, 'source', 'javascript', 'app.js'))) {
-        console.log('skip (python3 kit/tools/build.py --hmi ID8 jap_airplay first)');
+        console.log('skip (python3 kit/tools/build.py --hmi ID8 sy_airplay first)');
         return;
     }
     const kitDir = path.join(stage, 'source', 'javascript', 'kit');
@@ -30,7 +31,7 @@ async function main() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ap8app-'));
     const f = (n) => path.join(dir, n);
     process.env.MGU_RENDERD_FILE = f('stream.bin');
-    process.env.AP8_VIDEO = f('mgu-video-airplay');
+    process.env.AP8_VIDEO = f('mgu-video-sy-airplay');
     process.env.AP8_WANT = f('want');
     process.env.AP8_RX_STATUS = f('rx.json');
     process.env.AP8_D_STATUS = f('d.json');
@@ -103,12 +104,12 @@ async function main() {
     console.log('ok   ready: waiting for the iPhone, the steps name "BMW 12345"');
 
     // the iPhone mirrors: the picture over the whole app area
-    fs.writeFileSync(f('mgu-video-airplay'), Buffer.alloc(64));
+    fs.writeFileSync(f('mgu-video-sy-airplay'), Buffer.alloc(64));
     rx({ mirroring: true, client: 'iPhone', connections: 1, w: 888, h: 1920, fps: 30 });
     await step();
     await step(50);
     assert.deepStrictEqual(videoOp(), [0, 0, 2880, 764], 'the picture over the app area (fitted by the renderer)');
-    assert.strictEqual(disp.gpu.sent.video.get(1), f('mgu-video-airplay'), 'the file named to the renderer');
+    assert.strictEqual(disp.gpu.sent.video.get(1), f('mgu-video-sy-airplay'), 'the file named to the renderer');
     assert.ok(target('tap') && !target('back'), 'a tap target, no bar yet: ' + keys());
     snap('mirroring');
     await tapTarget(target('tap'));
@@ -123,16 +124,30 @@ async function main() {
     assert.ok(videoOp(), 'Show: the picture again');
     console.log('ok   mirroring: picture over the area, tap bar, Back to the steps, Show again');
 
-    // driving: the picture goes, a notice instead
+    // driving: "Parked only" off (the default here) - the picture stays up (experimental fork)
     drive(30);
     await step();
-    assert.ok(!videoOp() && !disp.gpu.sent.video.has(1), 'no picture while driving');
+    assert.ok(videoOp() && disp.gpu.sent.video.has(1), 'experimental: the picture stays up while driving');
     snap('driving');
+    // the setting on: hidden while moving, back when parked
+    hu.settings.set('parkedOnly', true);
+    await step();
+    assert.ok(!videoOp() && !disp.gpu.sent.video.has(1), 'Parked only on: no picture while driving');
     drive(0);
     await step();
     await step(50);
     assert.ok(videoOp(), 'parked again: the picture is back');
-    console.log('ok   driving: picture hidden, back when parked');
+    // off again while moving: the picture comes back at once (the upstream latch is gone)
+    drive(30);
+    await step();
+    assert.ok(!videoOp(), 'on again: hidden while driving');
+    hu.settings.set('parkedOnly', false);
+    await step();
+    await step(50);
+    assert.ok(videoOp(), 'off takes effect at once, even while moving');
+    drive(0);
+    await step(50);
+    console.log('ok   driving: picture up (experimental); the setting still hides it while moving');
 
     // the app's screen goes: the want file is no longer touched
     hu.ui.isVisible = () => false;

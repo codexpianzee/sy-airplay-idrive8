@@ -1,7 +1,7 @@
 'use strict';
 // iDrive 8: AirPlay as the head unit builds and starts it.
 //
-// The source package (dist/src/jap_airplay8, build.py --hmi ID8) is built with the MGU Store's own linker (the file
+// The source package (dist/src/sy_airplay8, build.py --hmi ID8) is built with the MGU Store's own linker (the file
 // its deploy tool runs on the car; MGU_STORE: a clone of github.com/robertnisipeanu/mgu-store) against a stand-in for
 // an app already on the car (id8_link.js), then started through its package.json's main against a fake oap-sdk and a
 // fake mgu-render (mgu8_harness.js, one process per case).
@@ -24,9 +24,9 @@ const os = require('os');
 const path = require('path');
 
 const root = path.join(__dirname, '..', '..');
-const src = path.join(root, 'dist', 'src', 'jap_airplay8');
+const src = path.join(root, 'dist', 'src', 'sy_airplay8');
 const store = process.env.MGU_STORE;
-if (!fs.existsSync(path.join(src, 'mgu-app.json'))) { console.log('skip (python3 kit/tools/build.py --hmi ID8 jap_airplay first)'); process.exit(0); }
+if (!fs.existsSync(path.join(src, 'mgu-app.json'))) { console.log('skip (python3 kit/tools/build.py --hmi ID8 sy_airplay first)'); process.exit(0); }
 if (!store || !fs.existsSync(path.join(store, 'tools', 'oap_link.js'))) { console.log('skip (MGU_STORE: a clone of github.com/robertnisipeanu/mgu-store, whose linker builds the package)'); process.exit(0); }
 
 // ---- the package, built as on the head unit
@@ -35,10 +35,10 @@ const { linkId8 } = require('./id8_link');
 const L = linkId8(path.resolve(store), src, work);
 const version = L.manifest.version;
 {
-    const art = path.join(root, 'dist', 'src', 'jap_airplay8@' + version + '.tgz');
+    const art = path.join(root, 'dist', 'src', 'sy_airplay8@' + version + '.tgz');
     const names = L.link.untar(fs.readFileSync(art)).map((f) => f.name);
     assert.ok(names.indexOf('mgu-app.json') >= 0 && names.indexOf('src/boot.js') >= 0, 'the artifact is a source package: mgu-app.json and the entry module at its root');
-    assert.ok(names.indexOf('jap_airplay8@' + version + '/package.json') >= 0 && !names.some((n) => /node_modules|javascript\/app\.js$/.test(n)), 'its tree, with no bundle and no SDK of its own');
+    assert.ok(names.indexOf('sy_airplay8@' + version + '/package.json') >= 0 && !names.some((n) => /node_modules|javascript\/app\.js$/.test(n)), 'its tree, with no bundle and no SDK of its own');
     assert.strictEqual(L.build.moduleCount, 4, 'one app module linked with the three SDK modules');
     assert.ok(/entry\.js$/.test(L.build.entry), 'the main is the stock entry point: ' + L.build.entry);
     const built = (f) => fs.readFileSync(path.join(L.dir, f), 'utf8');
@@ -80,7 +80,7 @@ function shown(r, what, o) {
     else {
         // IterioDev's dialect, as the apps known to draw on an iDrive 8 car connect: the app id alone, the dialect
         // told by an empty CLAIM first, then the touch areas; nothing of mgu-render/1, no upstream GRAB
-        assert.strictEqual(r.hello, 'jap_airplay8', what + ': HELLO is the app id alone: ' + JSON.stringify(r.hello));
+        assert.strictEqual(r.hello, 'sy_airplay8', what + ': HELLO is the app id alone: ' + JSON.stringify(r.hello));
         assert.deepStrictEqual([r.first911, r.x, r.grab10], [[9, 4], 0, 0], what + ': an empty CLAIM first, no mgu-render/1 message, no GRAB: ' + JSON.stringify([r.first911, r.x, r.grab10]));
         assert.ok(r.claims.some((n) => n > 0), what + ': touch areas claimed: ' + JSON.stringify(r.claims));
     }
@@ -89,7 +89,7 @@ function shown(r, what, o) {
     assert.ok(r.frames >= 2, what + ': frames sent: ' + r.frames);
     assert.deepStrictEqual(r.fatal, [], what + ': nothing fatal');
 }
-const line1 = (tile, pageState, app) => new RegExp('^AirPlay ' + version.replace(/\./g, '\\.') + ' for iDrive 8: running \\| start: [A-Z_]+ \\| tile: ' + tile + ' \\| page: ' + pageState + ' \\| app: ' + app);
+const line1 = (tile, pageState, app) => new RegExp('^SY AirPlay ' + version.replace(/\./g, '\\.') + ' for iDrive 8: running \\| start: [A-Z_]+ \\| tile: ' + tile + ' \\| page: ' + pageState + ' \\| app: ' + app);
 
 // ---- the HMI's events in every form
 for (const s of ['id7-like', 'stack-strings', 'stack-objects', 'visible-first', 'no-getId', 'focus-shapes', 'stack-only']) {
@@ -143,7 +143,7 @@ for (const k of ['event', 'hang', 'late-rhmi', 'member', 'no-last', 'refuse-open
     assert.strictEqual(r.tile.enabled, 1, 'the tile ENABLED');
     assert.ok(line1('init mapped enabled', 'opened', 'failed \\| error: the app did not load: broken on purpose').test(r.info.VIEW_INFO1), 'line 1: ' + r.info.VIEW_INFO1);
     assert.ok(/^The app's own code did not load \(broken on purpose\)/.test(r.info.VIEW_INFO2), 'line 2: ' + r.info.VIEW_INFO2);
-    assert.ok(r.titles.some((t) => t === 'AirPlay - did not load'), 'the title: ' + JSON.stringify(r.titles));
+    assert.ok(r.titles.some((t) => t === 'SY AirPlay - did not load'), 'the title: ' + JSON.stringify(r.titles));
     console.log('ok   sdk kit-broken: the page opens without the app\'s code and says "' + r.info.VIEW_INFO2 + '"');
 }
 
@@ -152,18 +152,18 @@ for (const k of ['event', 'hang', 'late-rhmi', 'member', 'no-last', 'refuse-open
     const r = run('no-renderer');
     sane(r, 'no renderer');
     assert.deepStrictEqual(r.shows, [], 'no renderer: nothing shown');
-    assert.ok(r.titles.some((t) => /^AirPlay - the GPU renderer \(mgu-render\) is not running/.test(t)), 'the title says why: ' + JSON.stringify(r.titles));
+    assert.ok(r.titles.some((t) => /^SY AirPlay - the GPU renderer \(mgu-render\) is not running/.test(t)), 'the title says why: ' + JSON.stringify(r.titles));
     assert.ok(line1('init mapped enabled', 'opened', 'started').test(r.info.VIEW_INFO1), 'line 1: ' + r.info.VIEW_INFO1);
     assert.ok(/^Screen: the GPU renderer \(mgu-render\) is not running \| page: visible yes/.test(r.info.VIEW_INFO2), 'line 2: ' + r.info.VIEW_INFO2);
     assert.ok(/^Renderer: (no socket|not connected)/.test(r.info.VIEW_INFO3), 'line 3: ' + r.info.VIEW_INFO3);
-    assert.ok(/^Service \(jap-airplay-d\): not running/.test(r.info.VIEW_INFO4), 'line 4: ' + r.info.VIEW_INFO4);
+    assert.ok(/^Service \(sy-airplay-d\): not running/.test(r.info.VIEW_INFO4), 'line 4: ' + r.info.VIEW_INFO4);
     console.log('ok   no renderer: "' + last(r.titles) + '"\n       ' + ['VIEW_INFO1', 'VIEW_INFO2', 'VIEW_INFO3', 'VIEW_INFO4'].map((k) => r.info[k]).join('\n       '));
 }
 {
     // mgu-render/1 (MGU_RENDERD_PROTO=native): the renderer says it does not have the app in front
     const r = run('not-in-front', undefined, { MGU_RENDERD_PROTO: 'native' });
     sane(r, 'not in front');
-    assert.ok(r.titles.some((t) => /^AirPlay - the GPU renderer does not see this app in front/.test(t)), 'the title says why: ' + JSON.stringify(r.titles));
+    assert.ok(r.titles.some((t) => /^SY AirPlay - the GPU renderer does not see this app in front/.test(t)), 'the title says why: ' + JSON.stringify(r.titles));
     assert.ok(/mgu-render\/1, gate yes, touch yes .* in front no, on screen no/.test(r.info.VIEW_INFO3), 'line 3: ' + r.info.VIEW_INFO3);
     console.log('ok   mgu-render/1, not in front: "' + last(r.titles) + '"');
 }

@@ -1,18 +1,24 @@
 'use strict';
 /**
- * AirPlay for iDrive 8 - an iPhone's screen on the central display by AirPlay screen mirroring, parked only.
+ * SY AirPlay for iDrive 8 - an iPhone's screen on the central display by AirPlay screen mirroring.
+ * Design: the SY Car Data (M Track) look - dark track background, amber accent, white text.
+ * EXPERIMENTAL FORK of trnaslan/airplay-idrive8: the picture stays up while driving too (the
+ * "Parked only" setting, off by default here, hides it again; it acts at once, also while moving -
+ * the upstream latch that kept the setting from counting until the car had stood still once is
+ * removed).
  *
- * The receiver is h4m4d's airplay-rx (UxPlay's AirPlay library), run by the service jap-airplay-d
- * (native/jap-airplay-d/airplayd.js) only while this app's screen is up. This app:
- *   - keeps it on: it touches WANT (/dev/shm/mgu-airplay8-want) about once a second while VIEW is visible; the service
+ * The receiver is h4m4d's airplay-rx (UxPlay's AirPlay library), run by the service sy-airplay-d
+ * (native/sy-airplay-d/airplayd.js) only while this app's screen is up. This app:
+ *   - keeps it on: it touches WANT (/dev/shm/mgu-sy-airplay-want) about once a second while VIEW is visible; the service
  *     starts airplay-rx and opens the car Wi-Fi's firewall while that file is fresh, and stops both a few seconds after;
- *   - shows the phone's picture: airplay-rx writes the decoded frames to /dev/shm/mgu-video-airplay (mgu-render's MGVF,
+ *   - shows the phone's picture: airplay-rx writes the decoded frames to /dev/shm/mgu-video-sy-airplay (mgu-render's MGVF,
  *     the same as MeTube's decoder) and the renderer draws the newest one in this app's video op;
- *   - reads airplay-rx's status (/dev/shm/mgu-airplay-status.json) and the service's (/dev/shm/mgu-airplay8-d.json).
+ *   - reads airplay-rx's status (/dev/shm/mgu-sy-airplay-status.json) and the service's (/dev/shm/mgu-sy-airplay-d.json).
  *
  * VIEW: while nothing is mirrored, how to connect (with the name the iPhone lists) and the state; once the iPhone
- * mirrors (and the car is parked), its picture over the whole app area, fitted. A tap on the picture shows a bar
- * (state, Back to the steps) for a few seconds. While driving (setting "Parked only", on by default) a notice instead.
+ * mirrors, its picture over the whole app area, fitted - in this experimental build also while driving; with the
+ * setting "Parked only" on, a notice instead. A tap on the picture shows a bar (state, Back to the steps) for a
+ * few seconds.
  *
  * Linked on the head unit (Node 8: no newer syntax).
  */
@@ -26,13 +32,14 @@ const Parked = require('./kit/parked');
 const W = PAGE.w, H = PAGE.h;                 // iDrive 8: 2080 x 520
 const TOP = 38;
 const VID = 1;
-const VPATH = process.env.AP8_VIDEO || '/dev/shm/mgu-video-airplay';
-const WANT = process.env.AP8_WANT || '/dev/shm/mgu-airplay8-want';
-const RX_STATUS = process.env.AP8_RX_STATUS || '/dev/shm/mgu-airplay-status.json';
-const D_STATUS = process.env.AP8_D_STATUS || '/dev/shm/mgu-airplay8-d.json';
+const VPATH = process.env.AP8_VIDEO || '/dev/shm/mgu-video-sy-airplay';
+const WANT = process.env.AP8_WANT || '/dev/shm/mgu-sy-airplay-want';
+const RX_STATUS = process.env.AP8_RX_STATUS || '/dev/shm/mgu-sy-airplay-status.json';
+const D_STATUS = process.env.AP8_D_STATUS || '/dev/shm/mgu-sy-airplay-d.json';
 const STALE_MS = 5000, BAR_MS = 4000, HINT_MS = 12000;
 const LIT = { literal: true }, LITB = { literal: true, font: 'bold' };
-const C = { bg: '#0b0d12', card: '#171b24', text: '#f1f3f7', dim: '#9aa3b2', accent: '#3ea6ff', ok: '#7ee07e', warn: '#ffd27a', err: '#ff6b6b' };
+// SY design (SY Car Data / M Track): dark track background, amber accent, white text, red errors
+const C = { bg: '#16191e', card: '#1e222a', text: '#f2f2f2', dim: '#9aa3b2', accent: '#ffb020', ok: '#7ee07e', warn: '#ffd27a', err: '#ff3b30' };
 
 process.on('uncaughtException', (e) => { try { mgu.log.error('uncaught', e); } catch (x) { /* nothing left to log with */ } });
 
@@ -49,14 +56,11 @@ mgu.run({
     async start(ctx) {
         const { ui, settings, log } = ctx;
         const parked = Parked.watch(ctx, log, { strict: true });
-        // "Parked only" off counts only once switched off while parked, so a press while moving cannot bring the
-        // picture up; switching it on works at once
-        let drivingOk = false;
-        const blocked = () => {
-            const off = settings.get('parkedOnly') === false, moving = parked.moving();
-            drivingOk = moving ? drivingOk && off : off;
-            return moving && !drivingOk;
-        };
+        // EXPERIMENTAL FORK: "Parked only" is off by default and acts at once, also while moving - the
+        // picture stays up while driving. Upstream latched the off state until the car had stood still
+        // once, so a press while moving could not bring the picture up; that latch is removed here.
+        // The setting on hides the picture while moving again, at once too.
+        const blocked = () => parked.moving() && settings.get('parkedOnly') !== false;
 
         /* ---------- keep the receiver on while VIEW is up ---------- */
         const up = () => ui.isVisible('VIEW');
@@ -81,7 +85,7 @@ mgu.run({
             }
             if (!m) full = false;
             wasMirroring = m;
-            if (ctx.status) ctx.status('Service (jap-airplay-d): ' + (svc ? svc.state + (svc.err ? ' - ' + svc.err : '') : 'not running - is the AirPlay service installed? (the Store, Tools)'));
+            if (ctx.status) ctx.status('Service (sy-airplay-d): ' + (svc ? svc.state + (svc.err ? ' - ' + svc.err : '') : 'not running - is the AirPlay service installed? (the Store, Tools)'));
             sync();
             dirty = true;
         }
@@ -105,7 +109,7 @@ mgu.run({
 
         /* ---------- what the state says, in one line ---------- */
         function line() {
-            if (!svc) return { t: 'AirPlay servisi çalışmıyor - MGU Store > Tools: "AirPlay service (iDrive 8)" kurulu mu?', c: C.err };
+            if (!svc) return { t: 'SY AirPlay servisi çalışmıyor - MGU Store > Tools: "SY AirPlay service (iDrive 8)" kurulu mu?', c: C.err };
             if (svc.state === 'failed') return { t: 'Alıcı başlatılamadı: ' + (svc.err || 'bilinmeyen hata'), c: C.err };
             if (!rx) return { t: 'Alıcı başlatılıyor...', c: C.warn };
             if (rx.mirroring) return { t: (rx.client || 'iPhone') + ' yansıtıyor' + (rx.fps ? ' · ' + Math.round(rx.fps) + ' fps' : '') + (blocked() ? ' · sürüş sırasında görüntü gizli' : ''), c: C.ok };
@@ -118,7 +122,9 @@ mgu.run({
         function drawSteps(cv) {
             G.frame(cv, ctx.theme(), [], -1);
             const x0 = 60, y0 = TOP + 40;
-            cv.text('iPhone ekranını yansıt', x0, y0 + 40, 44, C.text, LITB);
+            // the M Track header (SY Car Data): the name, an amber bar under it
+            cv.text('SY AIRPLAY', x0, y0 + 40, 44, C.text, LITB);
+            cv.fillRect(x0, y0 + 52, 130, 6, C.accent);
             const s = line();
             cv.circle(x0 + 10, y0 + 82, 9, s.c);
             cv.text(s.t, x0 + 32, y0 + 92, 26, s.c, LIT);
