@@ -80,6 +80,41 @@ Riskler / açık sorular (PC'de ölçüldü, arabada test edilecek):
   RideTube'nin car-media-player yolu kullanılmalı; koptuğu durumda "ses yok" bilinen sınır.
 - iOS 27 davranışları UxPlay 1.73.7'de düzeltilmiş (TEARDOWN); biz master'dayız.
 
+## Ses deneyi (kritik, Faz 2'yi şekillendirdi)
+
+PC'de `SY_NOAUDIO=1` (mDNS duyurusunda ses bitleri kapatılı) + `-as 0` ile test edildi:
+**video yine PC'de oynadı ve ses de stream'le BİRLİKTE alıcıya geldi** (HLS'in AAC sesi playbin
+tarafından çalındı). Telefon kendi sesini tutmuyor — AirPlay Video semantiği "hedef her şeyi
+çalar". h4m4d'nin `-A` hilesi (ses duyurusunu kapat → telefon sesi Bluetooth'ta tutar) yalnızca
+**yansıtma** modunda işe yarar, video modunda değil.
+
+**Sonuç:** araba sürümünde alıcı, videonun sesini ARABAYA çalmak zorunda — RideTube'nin
+"arabanın dinamik medya oynatıcısına dosya ver" yöntemi (jap-ridetube-d, GPL) kullanılacak.
+Ayrıca kanıtlandı: `video_get_playback_info` (konum/süre/durum) ve rate/scrub kumandası uçtan uca
+çalışıyor — telefondaki kumanda UI'ı alıcıdan besleniyor.
+
+## Faz 2 derleme hazırlığı (PC'de tamam)
+
+- **MGU x86-64, glibc 2.27** (aarch64 DEĞİL — Intel MGU21). Derleme: Zig `cc -target
+  x86_64-linux-gnu.2.27` (h4m4d'nin zcc/zar/zranlib sarmalayıcıları).
+- İndirildi (`C:\Users\lordi\airplay-src\`): Zig 0.13.0 (sha256 `d45312e61ebc…1230ea`,
+  h4m4d'nin sabitlediğiyle aynı), ffmpeg-3.4.7, libplist-2.6.0, openssl-1.1.1g (başlık için).
+- WSL2 + Ubuntu kuruldu (Windows yeniden başlatması bekliyor).
+- **Eksik (kullanıcı yapacak):** arabadan kütüphaneler — `libssl.so.1.1`, `libcrypto.so.1.1`,
+  `libdns_sd.so.1096*`, `libva.so.1*`, `libva-drm.so.1*` (root SSH ile `/usr/lib`'den
+  `C:\Users\lordi\car-libs\`'e kopyalanacak; derlemede sysroot olarak kullanılır).
+  iDrive 8'de libdns_sd `.1096` — derleme sırasında `.765` adına symlink yapılır
+  (çalışma zamanında zaten sy-airplay-d servis klasöründe aynı yöntem kullanılıyor).
+- **FFmpeg genişletmesi (video modu için):** h4m4d'nin ffcfg'sine eklenecekler:
+  `--enable-avformat --enable-demuxer=hls,mov,aac --enable-protocol=http,file,tcp
+  --enable-decoder=aac --enable-parser=aac --enable-swresample` (localhost HTTP yeterli — TLS
+  gerekmez, master playlist alıcının kendi sunucusundan geliyor).
+- **Yeni main (airplay-video-rx.c):** airplay-rx.c iskeleti + FCUP/video callback'leri dolu:
+  `on_video_play` → FFmpeg HLS oyuncu thread'i (avformat → h264 → MGVF), `on_video_rate/scrub`
+  → pause/seek, `on_video_acquire_playback_info` → oyuncu durumundan doldur, `get_custom_profile`
+  → `"AVC:480;VP9:0;AV1:0;HEVC:0"` (telefon zaman aşımını önler + MGU H.264-only ile uyumlu),
+  ses → arabaya (RideTube yöntemi, ikinci aşama).
+
 ## PC demo kurulumu (tekrar kurmak gerekirse)
 
 - MSYS2 → `pacman -S mingw-w64-ucrt-x86_64-{gcc,cmake,pkgconf,openssl,libplist,gstreamer,gst-plugins-{base,good,bad},ffmpeg,meson}`
